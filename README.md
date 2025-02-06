@@ -31,7 +31,7 @@ pip install -r requirements.txt
 4. 環境変数の設定：
 ```bash
 cp .env.example .env
-# .envファイルを編集し、OPENAI_API_KEYを設定
+# .envファイルを編集し、OPENAI_API_KEY、GOOGLE_API_KEY、GOOGLE_CLI_IDを設定
 ```
 
 ## 使用方法
