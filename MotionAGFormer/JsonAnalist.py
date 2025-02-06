@@ -102,9 +102,22 @@ class fix:
         0番フレームの "Head" と "LAnkle" のZ座標差を (self.user_height) で割って
         縮尺比を返す
         """
-        tallmin = self.skeleton_frames[0]["LAnkle"][2]
-        tallmax = self.skeleton_frames[0]["Head"][2]
-        tall = tallmax - tallmin
+
+        head = np.array(self.skeleton_frames[0]["Head"])
+        thorax = np.array(self.skeleton_frames[0]["Thorax"])
+        spine = np.array(self.skeleton_frames[0]["Spine"])
+        hip = np.array(self.skeleton_frames[0]["Hip"])
+        rhip = np.array(self.skeleton_frames[0]["RHip"])
+        rknee = np.array(self.skeleton_frames[0]["RKnee"])
+        rankle = np.array(self.skeleton_frames[0]["RAnkle"])
+
+        length1 = np.linalg.norm(head-thorax)
+        length2 = np.linalg.norm(thorax-spine)
+        length3 = np.linalg.norm(spine-hip)
+        length4 = np.linalg.norm(rhip-rknee)
+        length5 = np.linalg.norm(rknee-rankle)
+     
+        tall = length1+length2+length3+length4+length5
         if abs(self.user_height) < 1e-6:
             return 1.0
         return tall / self.user_height
@@ -214,7 +227,7 @@ class center_of_gravity:
 class strakezone:
 
     @staticmethod
-    def inpact_point(i, skeleton_frames):
+    def inpact_point(i, skeleton_frames, ratio):
         # RHand & RElbow => オフセット
         R_hand = np.array(skeleton_frames[i]["RWrist"])
         R_elbow = np.array(skeleton_frames[i]["RElbow"])
@@ -233,10 +246,12 @@ class strakezone:
         rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)
         angle = np.pi / 2
         q = Quaternion(axis=rotation_axis, angle=angle)
-        offset = np.array([0,70,0])  # 簡易
+        offset = np.array([0,70*ratio,0])  # 簡易
         rotated = q.rotate(offset)
         InpactPoint = R_hand + rotated
         return InpactPoint
+
+        
 
     @staticmethod
     def is_inside_pentagonal_prism(point, zone):
@@ -254,31 +269,40 @@ class strakezone:
         return path.contains_point((x,y))
 
     @staticmethod
-    def calc_strike_judge(num_frames, skeleton_frames, zone):
+    def calc_strike_judge(num_frames, skeleton_frames, zone, ratio):
         jlist = []
         for i in range(num_frames):
-            p = strakezone.inpact_point(i, skeleton_frames)
+            p = strakezone.inpact_point(i, skeleton_frames, ratio)
             inside = strakezone.is_inside_pentagonal_prism(p, zone)
             jlist.append(inside)
         return jlist
 
     @staticmethod
-    def batspeed(skeleton_frames):
+    def batspeed(ratio,skeleton_frames):
         speed_list = []
+        Inpact_list = []
         for i in range(len(skeleton_frames)-1):
-            p_now = strakezone.inpact_point(i, skeleton_frames)
-            p_next = strakezone.inpact_point(i+1, skeleton_frames)
-            dist = np.linalg.norm(p_next - p_now)
-            # 適当計算
-            speed_list.append(dist*10)
+            p_now = strakezone.inpact_point(i, skeleton_frames,ratio)
+            Inpact_list.append(p_now)
+
+            if p_now[1]>0:
+                p_next = strakezone.inpact_point(i+1, skeleton_frames, ratio)
+                speed = (p_next - p_now)/ratio/0.0333
+                speed = np.linalg.norm(speed)
+                speed = speed/100000*3600
+                speed_list.append(speed)  
+            else:
+                speed_list.append(0)
+
+
         max_speed = max(speed_list)
         max_idx = speed_list.index(max_speed)
         return max_speed, speed_list, max_idx
-
+    
 
 # ********************** 分析関数 *************************
 
-def analyze_json(input_json_path, user_height=170, verbose=False):
+def analyze_json(input_json_path, user_height=170,  verbose=False):
     """
     JSON(3D座標)を読み込み:
     frames: [ { frame_index, coordinates: [{joint_name, x,y,z}, ...] }, ... ]
@@ -309,6 +333,7 @@ def analyze_json(input_json_path, user_height=170, verbose=False):
                 d[c["joint_name"]] = (c["x"], c["y"], c["z"])
         skeleton_frames.append(d)
 
+
     total_frames = len(skeleton_frames)
     if verbose:
         print(f"[JsonAnalist] loaded {total_frames} frames from {input_json_path}")
@@ -316,6 +341,8 @@ def analyze_json(input_json_path, user_height=170, verbose=False):
     # fix + ratio
     fix_obj = fix(skeleton_frames, user_height)
     ratio_val = fix_obj.ratio()
+    #print(ratio_val)
+
 
     # ストライクゾーン設定 => minX, minY, minZ, maxX, maxY, maxZ
     # (例) 0番フレームの LShoulder, Hip, LKnee から計算
@@ -352,14 +379,17 @@ def analyze_json(input_json_path, user_height=170, verbose=False):
     # 全フレーム重心
     gravity_list = []
     for i in range(total_frames):
-        ip = strakezone.inpact_point(i, skeleton_frames)
+        ip = strakezone.inpact_point(i, skeleton_frames,ratio_val)
         seg = center_of_gravity.segment(data_idx, ip, 70, i, skeleton_frames)
         gravity_list.append(seg[15])  # 全身重心
 
     # judge
-    judge_list = strakezone.calc_strike_judge(total_frames, skeleton_frames, zone)
+    judge_list = strakezone.calc_strike_judge(total_frames, skeleton_frames, zone, ratio_val)
     # speed
-    spd, spd_list, max_idx = strakezone.batspeed(skeleton_frames)
+    spd, spd_list, max_idx = strakezone.batspeed(ratio_val, skeleton_frames)
+    #print(spd)
+    #print(spd_list)
+    #print(max_idx)
 
     if verbose:
         print("===========================================")

@@ -1,6 +1,7 @@
 from typing import Dict, Any, Optional
 import os
-
+import json
+import asyncio
 from langchain_openai import ChatOpenAI
 from agents import (
     InteractiveAgent,
@@ -61,6 +62,7 @@ class SwingCoachingSystem:
             ideal_pose_json
         )
         state = SystemState(initial_state)
+        print(state)
         
         try:
             # 1. ユーザーとの対話
@@ -70,6 +72,7 @@ class SwingCoachingSystem:
                 policy=policy_data
             )
             state.update({"conversation": interactive_result})
+            #print(interactive_result)
 
             # 2. 動作分析
             self.logger.log_info("Starting modeling...", agent="modeling")
@@ -81,6 +84,7 @@ class SwingCoachingSystem:
             )
             motion_analysis_result = modeling_result.get("analysis_result", "")
             state.update({"motion_analysis": motion_analysis_result})
+            print(motion_analysis_result)
 
             # 3. 目標設定
             self.logger.log_info("Setting goals...", agent="goal_setting")
@@ -92,6 +96,7 @@ class SwingCoachingSystem:
                 motion_analysis=motion_analysis_result
             )
             state.update({"goals": goal_result.get("goal_setting_result", "")})
+            print(goal_result)
 
             # 4. トレーニングプラン作成
             self.logger.log_info("Creating training plan...", agent="plan")
@@ -100,27 +105,33 @@ class SwingCoachingSystem:
                 motion_analysis=motion_analysis_result
             )
             state.update({"plan": plan_result})
+            print(plan_result)
 
             # 5. 関連情報の検索
-            self.logger.log_info("Searching relevant information...", agent="search")
-            search_result = await self.agents["search"].run(plan_result)
-            state.update({"search_results": search_result})
+            #self.logger.log_info("Searching relevant information...", agent="search")
+            #search_result = await self.agents["search"].run(plan_result)
+            #state.update({"search_results": search_result})
+            #print(search_result)
 
             # 6. 最終サマリーの生成
             self.logger.log_info("Generating final summary...", agent="summarize")
+            
             final_summary = await self.agents["summarize"].run(
                 analysis=motion_analysis_result,
                 goal=goal_result.get("goal_setting_result", ""),
-                plan=plan_result
+                plan=plan_result,
+                persona=persona_data,
+                policy=policy_data           
             )
             state.update({"summary": final_summary})
+            #print(final_summary)
 
             # 7. 結果の整形と返却
             return {
                 "interactive_result": interactive_result,
                 "motion_analysis": motion_analysis_result,
                 "goal_setting": goal_result.get("goal_setting_result", ""),
-                "search_results": search_result,
+                #"search_results": search_result,
                 "training_plan": plan_result,
                 "final_summary": final_summary
             }

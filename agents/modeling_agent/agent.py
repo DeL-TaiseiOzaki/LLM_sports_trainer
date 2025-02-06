@@ -109,7 +109,9 @@ class ModelingAgent(BaseAgent):
 
     async def _analyze_swing(self, pose_json: Dict[str, Any], label: str) -> str: # 戻り値を文字列に変更
         """pose_jsonからjoint_namesとの整合性を取る処理を追加"""
-        temp_path = f"./run/temp_{label}_3d_input.json"
+        temp_dir = "./run"
+        os.makedirs(temp_dir, exist_ok=True)  # ディレクトリがない場合は作成
+        temp_path = os.path.join(temp_dir, f"temp_{label}_3d_input.json")
         
         # joint_names との対応を定義
         joint_mapping = {
@@ -121,7 +123,7 @@ class ModelingAgent(BaseAgent):
         }
 
         try:
-            with open(temp_path, "w", encoding="utf-8") as f:
+            with open( temp_path, "w", encoding="utf-8") as f:
                 json.dump({
                     "frames": [
                         {
@@ -129,9 +131,9 @@ class ModelingAgent(BaseAgent):
                             "coordinates": [
                                 {
                                     "joint_name": joint_name,
-                                    "x": fdata["coordinates"][i][0] if i < len(fdata["coordinates"]) else 0.0,
-                                    "y": fdata["coordinates"][i][1] if i < len(fdata["coordinates"]) else 0.0,
-                                    "z": fdata["coordinates"][i][2] if i < len(fdata["coordinates"]) else 0.0
+                                    "x": fdata["coordinates"][i]["x"] if i < len(fdata["coordinates"]) else 0.0,
+                                    "y": fdata["coordinates"][i]["y"] if i < len(fdata["coordinates"]) else 0.0,
+                                    "z": fdata["coordinates"][i]["z"] if i < len(fdata["coordinates"]) else 0.0
                                 }
                                 for i, joint_name in enumerate(joint_mapping.keys())
                             ]
@@ -141,7 +143,7 @@ class ModelingAgent(BaseAgent):
                 }, f, indent=2)
 
             # JsonAnalistでの分析実行
-            analysis_result = analyze_json(temp_path, user_height=self.user_height, verbose=False)
+            analysis_result = analyze_json(temp_path, user_height=self.user_height,  verbose=False)
 
             # 解析結果を文字列化して返す
             return json.dumps(analysis_result, indent=2, ensure_ascii=False)

@@ -46,6 +46,7 @@ class InteractiveAgent(BaseAgent):
         try:
             # (1) 初期質問を生成
             questions = await self._generate_initial_questions(persona, policy)
+            #print(questions)
             collected_responses = []
             
             # (2) モード別で処理
@@ -97,6 +98,7 @@ class InteractiveAgent(BaseAgent):
 
             # (3) 会話から洞察を抽出
             insights = await self._extract_insights()
+            #print(insights)
 
             # (4) 最後の応答を保存
             self.responses = collected_responses
@@ -120,6 +122,7 @@ class InteractiveAgent(BaseAgent):
 
     async def _generate_initial_questions(self, persona: Any, policy: Any) -> List[str]:
         """初期質問を生成"""
+
         persona_dict = persona.dict() if hasattr(persona, 'dict') else persona
         policy_dict = policy.dict() if hasattr(policy, 'dict') else policy
 
@@ -127,12 +130,15 @@ class InteractiveAgent(BaseAgent):
             persona=json.dumps(persona_dict, ensure_ascii=False),
             policy=json.dumps(policy_dict, ensure_ascii=False)
         )
+
         response = await self.llm.ainvoke(prompt)
+        #print(response)
         return self._parse_questions(response.content)
 
     def _parse_questions(self, content: str) -> List[str]:
         """質問文字列をリストに分解"""
         lines = content.strip().split("\n")
+        #print(lines)
         return [line.strip() for line in lines if line.strip()]
 
     async def _extract_insights(self) -> List[str]:

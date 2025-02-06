@@ -22,15 +22,16 @@ class SummarizeAgent(BaseAgent):
         self.action_plan_prompt = self.prompts["action_plan_prompt"]
         self.feedback_prompt = self.prompts["feedback_prompt"]
 
-    async def run(self, analysis: str, goal: str, plan: str) -> str: # 戻り値を文字列に変更
+    async def run(self, analysis: str, goal: str, plan: str, persona: str, policy: str) -> str: # 戻り値を文字列に変更
         """
         analysis: ModelingAgentの出力
         goal: GoalSettingAgentの出力
         plan: PlanAgentの出力
         """
         try:
-            summary = await self._generate_summary(analysis, goal, plan)
-            action_plan = await self._generate_action_plan(goal, plan)
+            #summary = await self._generate_summary(analysis, goal, plan)
+            summary = f"## スイングモーションの分析結果：\n{analysis}\n\n目標設定：\n{goal}\n\n練習計画：\n{plan}\n\n"
+            action_plan = await self._generate_action_plan(goal, plan, persona, policy)
             feedback = await self._generate_feedback(analysis, goal)
 
             final_report = f"## コーチングレポート\n\n{summary}\n\n## アクションプラン\n\n{action_plan}\n\n## フィードバック\n\n{feedback}"
@@ -53,14 +54,16 @@ class SummarizeAgent(BaseAgent):
         )
         return response.content
 
-    async def _generate_action_plan(self, goal: str, plan: str) -> str:
+    async def _generate_action_plan(self, goal: str, plan: str, persona: str, policy: str) -> str:
         """
         アクションプランの生成（LLMを利用）
         """
         response = await self.llm.ainvoke(
             self.action_plan_prompt.format(
                 goal=goal,
-                plan=plan
+                plan=plan,
+                persona=persona,
+                policy=policy
             )
         )
         return response.content

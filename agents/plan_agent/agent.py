@@ -33,36 +33,37 @@ class PlanAgent(BaseAgent):
         """
         try:
             # 1. 検索クエリ生成
-            search_queries = await self._generate_search_queries(goal, motion_analysis)
+            search_queries = await self._generate_search_queries(goal)
+            print(f"クエリ{search_queries}")
             # 2. SearchAgentで検索実行
             search_results = await self.search_agent.run(search_queries)
+            print(f"検索エージェント{search_results}")
             # 3. 検索結果 + goal から最終プラン生成
-            plan = await self._create_plan(goal, motion_analysis, search_results)
+            plan = await self._create_plan(goal, search_results)
+            print(f"プラン{plan}")
             return plan # 文字列を返す
 
         except Exception as e:
             self.logger.log_error_details(error=e, agent=self.agent_name)
             return "" # エラー時は空文字列を返す
 
-    async def _generate_search_queries(self, goal: str, motion_analysis: str) -> str: # 戻り値を文字列に変更
+    async def _generate_search_queries(self, goal: str) -> str: # 戻り値を文字列に変更
         """
         LLMに検索クエリを作らせる。
         """
         prompt_template = self.prompts["search_queries_prompt"]
         prompt = prompt_template.format(
-            goals=goal,
-            analysis=motion_analysis # 分析結果追加
+            goals=goal # 分析結果追加
         )
         response = await self.llm.ainvoke(prompt)
         return response.content # 文字列を返す
 
-    async def _create_plan(self, goal: str, motion_analysis: str, search_results: str) -> str: # 戻り値を文字列に変更
+    async def _create_plan(self, goal: str, search_results: str) -> str: # 戻り値を文字列に変更
         """
         検索結果と目標からトレーニングプランをLLMで生成
         """
         prompt = self.prompts["task_generation_prompt"].format(
             goals=goal,
-            analysis=motion_analysis, # 分析結果追加
             search_results=search_results
         )
         response = await self.llm.ainvoke(prompt)

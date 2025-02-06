@@ -31,7 +31,9 @@ class SearchAgent(BaseAgent):
         results_list = []
         for request in search_requests.split('\n'):
             single_result = await self._execute_search(request)
+            print(f"フィルタの結果\n{single_result}")
             results_list.append(single_result)
+        print(results_list)
 
         analyzed = await self._analyze_search_results(results_list)
         return analyzed # 文字列を返す
@@ -47,19 +49,19 @@ class SearchAgent(BaseAgent):
         # search_toolsをリストとして扱い、最初の要素を使用
         search_tool = self.search_tools[0]
         raw_results = await search_tool.ainvoke(input={"query": query}) # queryに変更
+        print(f"{query}の検索結果{raw_results}")
         filtered = await self._filter_results(
-            raw_results, "", ""
+            query, raw_results
         )
         return filtered
 
-    async def _filter_results(self, results: str, category: str, expected_info: str) -> str: # 戻り値を文字列に変更
+    async def _filter_results(self, query:str, results: str) -> str: # 戻り値を文字列に変更
         """
         LLMを使い、検索結果をカテゴリや期待情報でフィルタする。
         """
         prompt = self.prompts["filter_prompt"].format(
+            query=query,
             results=results,
-            category=category,
-            expected_info=expected_info
         )
         response = await self.llm.ainvoke(prompt)
         return response.content # 文字列を返す

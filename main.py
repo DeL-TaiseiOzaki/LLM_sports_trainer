@@ -39,6 +39,7 @@ def main():
     group.add_argument("--ideal_pose_json", type=str, help="Path to ideal 3D pose JSON file")
 
     args = parser.parse_args()
+    print(f"YO:{args}")
 
     # JSONファイル読み込み
     input_data = JSONHandler.load_json(args.json)
