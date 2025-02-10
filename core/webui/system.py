@@ -182,7 +182,9 @@ class WebUISwingCoachingSystem:
             final_summary = await self.agents["summarize"].run(
                 analysis=motion_analysis_result,
                 goal=goal_result.get("goal_setting_result", ""),
-                plan=plan_result
+                plan=plan_result,
+                persona=persona_data,
+                policy=policy_data 
             )
             if state:
                 state.update({"summary": final_summary})
