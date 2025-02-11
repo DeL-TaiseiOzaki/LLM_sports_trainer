@@ -221,12 +221,9 @@ def main():
 
         # 1) 質問生成(最初に一度だけ)
         if not st.session_state.generated_questions:
-            # InteractiveAgent の _generate_initial_questions を利用して質問作成
-            # ※ 直接呼べない場合はPublicメソッドを作る / or ここだけ簡易利用
             agent = system.agents["interactive"]
             try:
                 questions = run_sync(agent._generate_initial_questions(basic_info, coaching_policy))
-                # 例えば 「\n区切りで3問」みたいに出力される想定
                 st.session_state.generated_questions = questions
             except Exception as e:
                 st.error(f"質問生成中にエラー: {e}")
@@ -244,11 +241,7 @@ def main():
 
             if submitted:
                 # 3) InteractiveAgentに対話ログとしてセット
-                #    ここではシンプルに: questions + user_answers を追加する
                 try:
-                    # run_sync() で agent.run() を呼ぶ
-                    # ただ、agent.run() 内部でも _generate_initial_questions が走るので注意が必要
-                    # ここでは "conversation_history" を後から付け足す形に
                     interactive_result = run_sync(system.agents["interactive"].run(
                         persona=basic_info,
                         policy=coaching_policy
@@ -290,7 +283,6 @@ def main():
             user_json_path = st.session_state.user_json_path
             ideal_json_path = st.session_state.ideal_json_path
 
-            # 進捗バーやステータス表示用
             status_container = st.empty()
             progress_bar = st.progress(0)
             result_container = st.container()
@@ -331,14 +323,17 @@ def main():
 
                     # 5) SummarizeAgent
                     status_container.info("最終レポートを作成中...")
+
+                    # ★ 修正箇所: persona=basic_info, policy=coaching_policy を追加
                     final_summary = run_sync(system.agents["summarize"].run(
                         analysis=modeling_result.get("analysis_result",""),
                         goal=goal_result.get("goal_setting_result",""),
-                        plan=plan_result
+                        plan=plan_result,
+                        persona=basic_info,
+                        policy=coaching_policy
                     ))
                     progress_bar.progress(100)
 
-                    # 結果をまとめてセッションステートに
                     st.session_state.analysis_results = {
                         "modeling": modeling_result,
                         "goal_setting": goal_result,

@@ -179,12 +179,14 @@ class WebUISwingCoachingSystem:
 
             # 最終サマリーの生成
             self.logger.log_info("Generating final summary...", agent="summarize")
+
+            # ★ 修正箇所: persona=persona_data, policy=policy_data を追加
             final_summary = await self.agents["summarize"].run(
                 analysis=motion_analysis_result,
                 goal=goal_result.get("goal_setting_result", ""),
                 plan=plan_result,
                 persona=persona_data,
-                policy=policy_data 
+                policy=policy_data
             )
             if state:
                 state.update({"summary": final_summary})
